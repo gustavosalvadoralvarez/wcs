@@ -1,0 +1,33 @@
+{
+	"Name": { 
+		"inputType": "text",
+		"next": {
+			"Menu": {
+				"inputType": "select",
+				"options": [
+					"hamburger",
+					"pizza",
+					"salad"
+				],
+				"next": {
+					"Add-ons": {
+						"inputType": "select", 
+						"options": {
+							"hamburger": [
+								"fries"
+							],
+							"pizza": [
+								"pepperoni",
+								"extra cheese"
+							],
+							"salad": [
+								"extra dressing",
+								"croutons"
+							]
+						}
+					}
+				}
+			}
+		}
+	}
+}

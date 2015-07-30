@@ -1,0 +1,192 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<link rel="import" href="../polymer/polymer.html">
+<script src="../papaparse/papaparse.min.js"></script>
+<script src="./lib/utils.js"></script>
+<script src="../highland/dist/highland.js"></script>
+<script src="../ydn.db/dist/ydn.db-is-core-e-qry-dev.js "></script>
+
+<!--
+An SQL service in the browser.
+
+Example:
+
+    <indexed-db-store></indexed-db-store>
+
+@demo
+-->
+<dom-module id="indexed-db-store">
+
+  <style>
+
+  </style>
+
+
+  <template>
+    <div class="content">
+      <content></content>
+    </div>
+  </template>
+
+</dom-module>
+
+<script>
+  var _ = highland;
+  Polymer({
+
+    is: 'indexed-db-store',
+
+    properties: {
+      _db: { 
+        type: function () { return {} }
+      }
+    },
+    attached : function() {
+      var self, db, srcs, dbSchema, srcNames;
+      self = this;
+      srcs = self.gatherDataSources();
+      srcNames = srcs.map(utils.attributeMap('name'));
+      console.log(srcNames);
+      db = new ydn.db.Storage(self.dbName(), self.generateDBSchema(srcs));
+      db.on = function(ev, fn){
+        db.addEventListener(ev, fn)
+      };
+      _('ready', db)
+      .filter(dbState)
+      .map(srcStream(srcs))
+      .flatten()
+      .map(function(t){ 
+        console.log(t); 
+        return(utils.importText(t))
+      })
+      .map(parseSrc)
+      .map(function(rowStream){ return rowStream.collect() })
+      .each(console.log)
+      // .zipAll(srcs.map(utils.attributeMap('name')))
+      // .map(loadSrc)
+      // .each(handleETLError)
+      // .done(launchDB);
+
+      function dbState(event){
+        console.log("Initializing database...");
+        var updated, currVersion, prevVersion;
+        currVersion = event.getVersion();
+        prevVersion = event.getOldVersion();
+        updated = currVersion !== prevVersion;
+        console.log("Previous version: "+String(prevVersion));
+        console.log("Current version: "+String(currVersion));
+        if (isNaN(event.getOldVersion())) {
+          return true
+        } else if(updated){ 
+          console.log("Database loaded with new schema...");
+          return true
+        }else {
+          console.log('existing database connected');
+          return false
+        }
+      }
+      function srcStream(srcs){ 
+        return function(){
+          console.log("Generating source stream...");
+          return _(srcs);
+        }
+      }
+      function parseSrc(src){ 
+        console.log("Parsing job initialized..");
+        console.log(src);
+        var out;
+        out = _(); 
+        Papa.parse(src, {
+            step: function(row){ 
+              out.write(row)
+            },
+            complete: function(){ 
+              console.log("Parsing job sucessfull!");
+              out.write(_.nil);
+            }
+          }
+        );
+        return out;
+      }
+      function loadSrc(src){ 
+          console.log("Loading src: "+src[1]+"...");
+          var dbPromise;
+          dbPromise = db.addAll(src[1], src[0])
+          return _(dbPromise);
+      }
+      function handleETLError(e){ 
+        if (e){ //tmp impl//
+          console.log(e)
+          return 
+        }
+      }
+      function launchDB(db){ 
+        return function(){ 
+          self.fire('db-ready');
+          window.dbReady = true;
+          self._db = db;
+          self.provisionViews(db);
+        }
+      }
+    },
+    gatherDataSources: function(){
+      var self = this;
+      return utils.asArray(self.querySelectorAll('.source'))
+    },
+    generateDBSchema: function(dataSources){ 
+      var self;
+      self = this;
+      return {
+        stores: dataSources.map(
+          function(el){
+            return utils.JSON.import(
+              self.querySelector(
+                '.schema[name="'+el.getAttribute('name')+'"]'
+              )
+            );
+          }
+        )
+      } 
+    },
+    dbName: function(){ 
+      return document.querySelector("TITLE").textContent
+    },
+    sniffDataLinks: function(dataLinks){
+      return dataLinks.map(utils.textContent).map(
+        function(dtx){
+          var rows, first, nrows; 
+          rows = dtx.split('\n'); 
+          first = utils.car(rows).split(',');
+          nrows = rows.length;
+          return { 
+            cols: first,
+            nrows: nrows
+          }
+
+        }
+      )
+    },
+    provisionViews: function(db){
+      return function(e){
+        var view, viewSql;
+        view = e.target
+        viewSql = view.getAttribute('SQL');
+        console.log("Processing Sql query: \n\t"+viewSql);
+        db.executeSql(viewSQL).then(
+          function(viewData){ 
+            console.log("Sql query processed sucessfull!")
+            view.viewData = viewData;
+          }
+        );
+      }
+    }
+  });
+
+</script>

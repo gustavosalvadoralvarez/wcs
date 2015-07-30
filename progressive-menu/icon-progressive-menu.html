@@ -1,0 +1,181 @@
+<!--
+@license
+Copyright (c) 2015 Gustavo Salvador Alvarez Ortiz gustavosalvadoralvarez@gmail.com
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-menu/paper-menu.html">
+<link rel="import" href="../paper-item/paper-icon-item.html">
+<link rel="import" href="../paper-item/paper-item-body.html">
+<link rel="import" href="../iron-icon/iron-icon.html">
+<link rel="import" href="../iron-icons/social-icons.html">
+<link rel="import" href="../iron-icons/device-icons.html">
+<link rel="import" href="../iron-icons/hardware-icons.html">
+<link rel="import" href="../iron-icons/communication-icons.html">
+<link rel="import" href="../iron-icons/image-icons.html">
+<link rel="import" href="../iron-icons/social-icons.html">
+<link rel="import" href="../iron-icons/maps-icons.html">
+<link rel="import" href="../iron-icons/editor-icons.html">
+<link rel="import" href="../iron-icons/notification-icons.html">
+<link rel="import" href="../iron-icons/av-icons.html">
+<link rel="import" href="../iron-icons/iron-icons.html">
+
+<script src="./lib/utils.js"></script>
+<!--
+An element providing a solution to no problem in particular.
+
+Example:
+
+    <progressive-menu></progressive-menu>
+
+@demo
+-->
+<dom-module id="icon-progressive-menu">
+  <style>
+    :host {
+      display: block;
+      box-sizing: border-box;
+    }
+  </style>
+  <template>
+    <paper-menu class="progressive-menu" 
+                attr-for-selected="name" 
+                on-iron-select="updateItems">  
+      <paper-item name="ghost-item" hidden="true"></paper-item>
+      <template is="dom-repeat" items="[[menuItems]]"> 
+        <paper-icon-item name="[[item.name]]">
+          <iron-icon icon="[[item.icon]]"></iron-icon>
+          <paper-item-body>[[item.name]]</paper-item-body>
+        </paper-icon-item>
+      </template>
+    </paper-menu>
+  </template>
+</dom-module>
+
+<script>
+
+  Polymer({
+
+    is: 'icon-progressive-menu',
+
+    properties: {
+      /**
+      * Items currently displayed in the menu
+      *
+      * @type {[string]} 
+      */ 
+      menuItems: {
+        type: Array,
+        notify: true
+      },
+       /**
+      * user selections along menu steps
+      *
+      * @type {Array}
+      */
+      menuSelections: {
+        type: Array,
+        notify: true,
+        value: function (){ return [] }
+      },
+      /**
+      * value of latest selection 
+      *
+      * @type {String} 
+      */ 
+      currentSelection: {
+        type: String,
+        notify: true
+      },
+      /**
+      * current step in menu progression
+      *
+      * @type {Object}
+      */
+      currentStep: {
+        type: Object,
+        notify: true,
+        value: ""
+      }, 
+      /**
+      * Object with the menu options progression 
+      *
+      * @type {Object} 
+      */ 
+      steps: {
+        type: Object,
+        notify: true
+      }, 
+      /**
+      * href for steps import 
+      *
+      * @type {String} 
+      */ 
+      import: {
+        type: String,
+        reflectToAttribute: true
+      },
+      icons:{
+        type: Object
+      },
+      iconimport:{
+        type: String,
+        reflectToAttribute: true
+      }
+    },
+
+    // Element Lifecycle
+
+    attached: function() {
+      var self, importLink;
+      self = this;
+      console.log(self.import);
+      self.steps = self.steps || utils.JSON.import(
+        document.querySelector(self.import)
+      );
+      self.icons = self.icons || utils.JSON.import(
+        document.querySelector(self.iconimport)
+      );
+      self.currentStep = self.steps;
+      self.updateItems(null);
+    },
+
+    // Element Behavior
+
+    updateItems: function(event){
+      console.log('@update-items');
+      var self, menuSelection, currStep, nextStep, nextItems;
+      self = this;
+      menuSelection = event
+                      ? event.target.selected
+                      : null;
+      currStep = self.currentStep;
+      if (menuSelection){
+        self.menuSelections = self.menuSelections.concat(menuSelection);
+        self.fire('selection', menuSelection);
+        self.currentSelection = menuSelection;
+        if (Array.isArray(currStep)){
+          return // end of selections tree 
+        } else {
+          self.currentStep = nextStep = currStep[menuSelection];
+        }
+      } else {
+        nextStep = self.currentStep;
+      }
+      self.$$('paper-menu').selected = "0";
+      if(Array.isArray(nextStep)){
+        nextItems = nextStep;
+      }else{
+        nextItems = Object.keys(nextStep);
+      }
+      self.menuItems = nextItems.map( 
+        function (item, i, arr) { 
+          return {
+            name: item,
+            icon: self.icons[item]
+          }
+        }
+      );
+    }
+  });
+
+</script>

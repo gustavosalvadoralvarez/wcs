@@ -1,0 +1,10 @@
+{
+	"good": {
+		"marvel": ["spiderman","ironman","hulk"],
+		"dc": ["superman","batman","seaman"]
+	},
+	"bad": {
+		"marvel": ["venom", "ultron", "Locki"],
+		"dc": ["riddler", "joker", "freeze"]
+	}
+}

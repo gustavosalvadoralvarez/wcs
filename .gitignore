@@ -1,0 +1,3 @@
+*.csv
+/csv-dataframe/data/*
+/indexed-db-store/data/*

@@ -1,0 +1,302 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../google-map/google-map.html">
+<link rel="import" href="../google-map/google-map-marker.html">
+<link rel="import" href="../google-map/google-map-search.html">
+<link rel="import" href="../google-map/google-map-directions.html">
+<script src="./lib/utils.js"></script>
+
+<!--
+An element providing a solution to no problem in particular.
+
+Example:
+
+    <gm-viz></gm-viz>
+
+@demo
+-->
+<dom-module id="gm-viz">
+
+  <style>
+    :host {
+      display: block;
+      height: 100%;
+    }
+
+    :host google-map {
+      float:left;
+      width: 70%;
+      height: 100%;
+  }
+
+  </style>
+
+  <template>
+    <google-map></google-map>
+    <div class="content">
+      <content></content>
+    </div>
+  </template>
+
+</dom-module>
+
+<script>
+
+  Polymer({
+
+    is: 'gm-viz',
+
+    properties: {
+      baseLat: {
+        type: Number,
+        notify: true,
+        reflectToAttribute: true,
+        value: 19.4333
+      },
+      baseLng: {
+        type: Number,
+        notify: true,
+        reflectToAttribute: true,
+        value: -99.1333
+      }, 
+      baseZoom: {
+        type: Number,
+        notify: true,
+        reflectToAttribute: true,
+        value: 5
+      },
+      mapReady: {
+        type: Boolean,
+        notify: true,
+        value: false
+      },
+      gmap: {
+        type: Object
+      },
+      views: {
+        type: function() { return {} } ,
+        notify: true
+      },
+      services: {
+        type: Object,
+        notify: true,
+        value: function(){
+          return { 
+            directions: null,
+            places: null
+          }
+        }
+
+      }
+    },
+    attached: function(){
+      var self, map, gmap, dbView;
+      self = this;    
+      map = self.$$('google-map');
+      map.latitude = self.baseLat;
+      map.longitude = self.baseLng;
+      map.zoom = self.baseZoom;
+      map.addEventListener('google-map-ready', function () {
+        console.log('@google-map-ready');
+        var gmap, dbView;
+        self.gmap = map.map;
+        self.mapReady = true;
+        self.services.directions = new google.maps.DirectionsService();
+        gmap = map.map;
+        dbView = self.querySelector('sql-view'); 
+        console.log(dbView);
+        if (dbView.viewData){
+          console.log("Received db data...");
+          self.processViewData(dbView.viewData);
+        }else {
+          dbView.addEventListener('db-data', 
+            function(evnt){ 
+              console.log("Received db data...");
+              self.processViewData(evnt.detail);
+            }
+          )
+        }
+      });
+    },
+
+    processViewData: function(name, data, callback){
+      console.log("Processing "+name+" data...");
+      var self, processed;
+      self = this; 
+      processed = {
+        data: data,
+        geocode: self.viewGeocoding(data)
+      };
+      self.views[name] = processed;
+      if (callback){
+        callback(processed);
+      }
+    },
+
+    viewGeocoding: function(viewData){ 
+      var self, dims, latKey, lngKey;
+      console.log(viewData.length);
+      self = this;
+      dims = Object.keys(utils.car(viewData)); 
+      console.log(dims);
+      latKey = dims.filter(
+        function(k){ 
+          return /lat/gi.test(k)
+        }
+      )[0]; 
+      lngKey = dims.filter(
+        function(k){ 
+          return /lng|longitud/gi.test(k)
+        }
+      )[0]; 
+      return viewData.map(
+        function (r, i){
+          var rlat, rlng;
+          rlat = row[latKey];
+          rlng = row[lngKey];
+
+          if (rlat && rlng){
+            return new google.maps.LatLng(rlat, rlng);
+          }
+          return null
+        }
+      )
+    },
+
+    geocodingMarkers: function(geocoding, titles){ 
+      var self, gmap;
+      self = this;
+      gmap = self.gmap;
+      titles = titles || utils.range(geocoding.length).map(String);
+      return geocoding.reduce(
+        function(markers, gc, i){ 
+          if (gc){
+            var marker = new google.maps.Maker({
+              position: gc,
+              title: titles[i],
+              map: gmap
+            });
+            markers = markers.concat(marker);
+          }
+          return markers
+          }
+        },
+        []
+      )
+    },
+
+    viewMarkers: function(viewData){
+      var self, dims, latKey, lngKey;
+      console.log("Generating markers...");
+      console.log(viewData.length);
+      self = this;
+      dims = Object.keys(utils.car(viewData)); 
+      console.log(dims);
+      latKey = dims.filter(
+        function(k){ 
+          return /lat/gi.test(k)
+        }
+      )[0]; 
+      lngKey = dims.filter(
+        function(k){ 
+          return /lng|longitud/gi.test(k)
+        }
+      )[0]; 
+      return viewData.reduce( 
+        function (markers, row, i){ 
+          var rlat, rlng, pos, rmarker;
+          rlat = row[latKey];
+          rlng = row[lngKey];
+
+          if (rlat && rlng){
+            console.log("creating marker...");
+            pos = new google.maps.LatLng(rlat, rlng);
+            rmarker = new google.maps.Marker({
+              position: pos, 
+              title: String(i)
+            });
+            rmarker.latitude = parseInt(rlat, 10);
+            rmarker.longitude = parseInt(rlng, 10); 
+            //rmarker.setAttribute('data-row', i);
+            markers = markers.concat(rmarker);
+          }
+          return markers
+        }, 
+        []
+      ); 
+    },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    initPlacesLayer: function(layer){
+      var self, gmap;
+      self = this;
+      gmap = self.gmap;
+      self.activeLayers.places[layer] = self.dataLayers.places[layer].map(
+        function(place){
+          return new google.maps.Marker({
+            position: place.location,
+            map: gmap,
+            title: place.title
+          })
+        }
+      );
+    },
+    activatePlacesLayer: function(layer){
+      var gmap = this.gmap;
+      layer.forEach(function(marker){ marker.setMap(gmap) });
+    },
+    deactivatePlacesLayer: function(layer){
+      layer.forEach(function(marker){ marker.setMap(null) });
+    }, 
+    routeRequest: function(start, end, waypointsArr){
+      return {
+        origin: start,
+        destination: end,
+        travelMode: google.maps.TravelMode.DRIVING,
+        waypoints: waypointsArr, 
+        optimizeWaypoints: true
+      }
+    },
+    getRoute: function(routeRequest){
+      var self;
+      self = this; 
+      self.directions.route(routeRequest,
+        function (res, status){ 
+          if (status == google.maps.DirectionsStatus.OK) {
+            var route;
+            route = response.routes[0];
+          }
+        }
+      );
+    }
+  });
+
+</script>

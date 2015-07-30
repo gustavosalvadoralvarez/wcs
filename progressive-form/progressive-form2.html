@@ -1,0 +1,235 @@
+
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-radio-group/paper-radio-group.html">
+<link rel="import" href="../paper-radio-button/paper-radio-button.html">
+<link rel="import" href="../polymer-paper-datepicker/paper-date-picker.html">
+<link rel="import" href="../paper-input/paper-input.html">
+<link rel="import" href="../paper-input/paper-textarea.html">
+
+
+
+<script src="./lib/utils.js"></script>
+
+<!--
+-->
+<dom-module id="progressive-form">
+
+  <style>
+    :host {
+      display: block;
+    }
+  </style>
+
+  <template>
+    <section id="progressive-form-body">
+      <!-- Text Input -->
+      <paper-input 
+        class='text-input'
+        label="{{currentInput.label}}" 
+        required="true"
+        on-change="step"
+        style="display:none;">
+      </paper-input> 
+      <!-- Textarea ILnput-->
+      <paper-textarea 
+        class='textarea-input'
+        attr-for-value="value" 
+        label="{{currentInput.label}}" 
+        required="true"
+        on-change="step"
+        style="display:none;">
+      </paper-textarea> 
+      <!-- Date Input-->
+      <section class="date-input" 
+               style="display:none;">
+        <paper-button 
+          class="btn" 
+          on-tap="toggleDate" 
+          raised>Choose Date</paper-button>
+        <paper-dialog 
+          id="dialog" 
+          class="paper-date-picker-dialog" 
+          modal 
+          on-iron-overlay-closed="step">
+          <paper-date-picker 
+            id="date-input-datepicker" 
+            responsive-width="655px">
+          </paper-date-picker>
+          <div 
+            class="buttons">
+            <paper-button 
+              dialog-dismiss>Cancel</paper-button>
+            <paper-button 
+              dialog-confirm>OK</paper-button>
+          </div>
+        </paper-dialog>
+      </section>
+      <!-- Select ILnput-->
+      <template is="dom-if" if="{{createSelect}}">
+        <paper-radio-group  
+          class="select-input" 
+          attr-for-selected="name" 
+          selected=""
+          on-iron-select="step">
+          <template is="dom-repeat" items="{{currentInput.options}}">
+              <paper-radio-button 
+                name$="{{item}}">{{item}}</paper-radio-button>
+          </template>
+        </paper-radio-group>
+      </template>
+    </section>
+  </template>
+</dom-module>
+
+<script>
+
+  Polymer({
+
+    is: 'progressive-form',
+
+    properties: {
+      import: {
+        type: String
+      },
+      inputs: {
+        type: Object
+      },
+      selections: {
+        type: Array,
+        notify: true,
+        value: function () { return {} }
+      },
+      currentInput: {
+        type: Object,
+        notify: true
+      },
+
+      createSelect: {
+        type: Boolean,
+        value: false,
+        notify: true
+      }
+    },
+
+    // Element Lifecycle
+
+    attached: function() {
+      var self; 
+      self = this; 
+      self.inputs = self.inputs || utils.JSON.import(
+        document.querySelector(self.import)
+      ); 
+      self.currentInput = self.nextInput(); 
+      self.attachCurrentInputEl();
+    },
+
+    currentInputEl: function (){
+      var self; 
+      self = this; 
+      return document.querySelector('.'+ self.currentInput.inputType + '-input')
+    },
+
+    detachCurrentInputEl: function (){ //Side Effect: setAttribute 
+      var self;
+      self = this;
+      self.currentInputEl().setAttribute('style', 'display:none;'); 
+      self.createSelect = false; 
+    },
+
+    attachCurrentInputEl: function (){  //Side Effect: setAttribute []
+      var self, inputEl; 
+      self = this, 
+      inputEl = self.currentInputEl();
+      inputEl.setAttribute('style', 'display:block;');
+      if (self.currentInput.inputType === 'select'){
+          self.createSelect = true; 
+      }
+      //   utils.asArray(inputEl.querySelectorAll("paper-radio-button")).forEach(
+      //     function(el){
+      //       console.log(el);
+      //       el.setAttribute('checked', 'false')
+      //     }
+      //   )
+      // }
+    },
+
+    currentSelection: function (){
+      var self, inputEl, selection; 
+      self = this;
+      console.log(self.currentInput); 
+      inputEl = self.currentInputEl();
+          console.log(inputEl);
+      switch(self.currentInput.inputType){
+        case "text":
+          selection = inputEl.value;
+        break;
+        case "textarea":
+          selection = inputEl.value;
+        break;
+        case "select":
+          selection = inputEl.selected;
+        break;
+        case "date": 
+          selection = inputEl.date;
+        break; 
+        default: 
+          return new Error("Invalid inputType")
+      }
+      if (!selection || (inputEl.validate && !inputEl.validate())){
+        return new Error("Invalid or missing value: \n"+String(selection))
+      }
+      return selection
+    },
+
+    nextInput: function (){ 
+      var self, nxtInput;
+      self = this; 
+      nxtInput = self.currentInput
+                 ? utils.labeledChild(self.currentInput.next)
+                 : utils.labeledChild(self.inputs); 
+      if (nxtInput.inputType === 'select'){
+        var ops, nxtOpts;
+        ops = nxtInput.options;
+        if(!Array.isArray(ops)) {
+           nxtOps = ops[self.currentSelection()] || ops["*"];
+           if (!nxtOps){
+            throw new Error("No valid options for select input: \n" + JSON.stringify(nxtInput))
+            return
+           }
+           nxtInput.options = nxtOps; 
+        }
+      } 
+      return nxtInput
+    },
+
+    step: function (evnt){ // Side Effects: detachCurrentInputEl, currentInput, attachCurrentInputEl
+      var self, val;
+      self = this;
+      val = self.currentSelection();
+      console.log(evnt);
+      if(evnt){
+        console.log(evnt.target.selected);
+      }
+      if (val){
+        var currLabel, evntObj, nxtInput;
+        currLabel = self.currentInput.label;
+        evntObj = {};
+        evntObj[currLabel] = val;
+        self.selections[currLabel] = val;
+        self.fire("progressive-form-step", evntObj);
+        if (!self.currentInput.next){
+          self.fire('progressive-form-submit', self.selections);
+          return
+        }
+        nxtInput = self.nextInput();
+        if (nxtInput){
+          self.detachCurrentInputEl(); 
+          self.currentInput = nxtInput;
+          self.attachCurrentInputEl();
+        }
+      }
+    },
+
+  });
+
+</script>

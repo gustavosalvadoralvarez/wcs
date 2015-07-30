@@ -1,0 +1,152 @@
+<!doctype html>
+<!--
+@license
+
+-->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+
+    <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="../../web-component-tester/browser.js"></script>
+    <!-- Step 1: import the element to test -->
+    <link rel="import" href="../csv-dataframe.html">
+  </head>
+  <body>
+
+    <!-- You can use the document as a place to set up your fixtures. -->
+    <csv-dataframe>
+      <link rel="import" href="./Clientes.csv">
+    </csv-dataframe>
+
+    <script>
+      var df;
+
+      df = document.querySelector('csv-dataframe');
+
+      suite('<csv-dataframe>', 
+        function() {
+
+          console.log("here"); 
+          var  tcolumns, tnrow, tncol, tRFC, tsubsets; 
+
+          tnrow = 161378;
+          tncol = 65;
+
+          test('Dimension properties', 
+            function(){
+              assert.equal(df.nrow, tnrow, "Number of rows is correct");
+              assert.equal(df.ncol, tncol, "Number of columns is correct");
+            }
+          );
+
+          tcolumns = ["ORG_ID","POS_ID_AGENTE","NOMBRE_ORGANIZACION","CUSTOMER_ID","ORIG_SYSTEM_REFERENCE","CUSTOMER_NUMBER","RFC","NOMBRE","NOMBRES","APELLIDOS","NOMBRE_ALTERNO","FECH_CREACION","DIRECCION","COLONIA","DELEGACION","ENTRE_CALLES","CIUDAD","ESTADO","CODIGO_POSTAL","CLASE_CLIENTE","CANAL_VENTAS","TIPO_CLIENTE","SITE_USE_CODE","PRIMARY_FLAG","ID_VENDEDOR","NUMERO_VENDEDOR","NOMBRE_VENDEDOR","PUESTO_TBAJO_VENDEDOR","CODIGO_IMPUESTO","ID_TIPO_PEDIDO","TIPO_PEDIDO","ID_LISTA_PRECIOS","LISTA_PRECIOS","SITE_USE_ID","NOMBRE_COBRADOR","ENVIO_ESTADOS","ENV_SAL_CRED","MONEDA","RETENCION_CREDITO","LIMITE_CREDITO","LIMITE_CRED_PED","TOLERANCIA","LOCALIZACION","METODO_ENVIO","METODO_ENVIO_NAME","TERMINOS_PAGO","STATUS_CLIENTE","STATUS_DIRECCION","STATUS_DIRECCION_USO","FORMA_PAGO","ORIG_SITE_REFE","ORIG_USE_REFE","GPO_CTE","SBGPO_CTE","GLN_REC","NUM_PROV","CEDIS","CONGEL_CTE","DEPOSITO","CUST_ACCT_SITE_ID","SIBEL_CTE_ID","ROW_ID_S_CON_ADDR","ADDR_PER_ID","LATITUDE","LONGITUDE"]; 
+
+          test("Columns property", 
+            function (){
+              assert.sameMembers(df.columns, tcolumns, "Column names are correct")
+            }
+          );
+
+          tRFC = [[0, "RAOR620106JZ8"],
+                  [482, "AUGV670930A38"],
+                  [129891, "MVG 840905 K28"],
+                  [154163, "A"],
+                  [154383, "AA"],
+                  [152942, ""],
+                  [69904, "HELA810501FS9"],
+                  [73241, "MOND6211185E1"],
+                  [138651, "PAM 911126 5SA"],
+                  [139585, "XAXX010101000"],
+                  [141582, "GOAL600312MW0"]];
+
+          test("Data loading", 
+            function(){
+              var RFCcol;
+              assert.isTrue(df.dataLoaded, "ETL processed completed.");
+              assert.ok(window.localStorage, "localStorage available");
+              tcolumns.forEach(
+                function(c){
+                  var ck;
+                  ck = df._key(c); 
+                  assert.ok(window.localStorage.getItem(ck), "Column "+c+" loaded to storage.");
+                }
+              );
+              RFCcol = df._decompress(window.localStorage.getItem(df._key("RFC")));
+              tRFC.forEach(
+                function (tRow){
+                  assert.equal(tRow[1], RFCcol[tRow[0]], "Row " + String(tRow[0]) + " RFC value loaded correctly")
+                }
+              );
+            }
+          );
+
+          test("Data retrieval",
+            function (){
+              var retrived, retrievedCols, numRetrievedValues, rRFC;
+              retrieved = df.subsetCols(df.columns);
+              retrievedCols = Object.keys(retrieved);
+              numRetrievedValues = retrievedCols.reduce(
+                function (valCount, col){
+                  return valCount + retrieved[col].length
+                },
+                0
+              );
+              assert.sameMembers(tcolumns, retrievedCols, "Retrieved columns match test columns");
+              assert.equal(tncol*tnrow, numRetrievedValues, "Number of values retrieved matches test values");
+              rRFCcol = retrieved["RFC"]; 
+               tRFC.forEach(
+                function (tRow){
+                  assert.equal(tRow[1], rRFCcol[tRow[0]], "Row " + String(tRow[0]) + " RFC value retrieved correctly");
+                }
+              );
+            }
+          );
+
+          tsubsets = [
+            {
+              rows: tRFC.map(function(tRow){ return tRow[0]}), 
+              cols: ["ORIG_SYSTEM_REFERENCE","CUSTOMER_NUMBER","RFC","NOMBRE","NOMBRES","APELLIDOS","NOMBRE_ALTERNO","FECH_CREACION","DIRECCION","COLONIA","DELEGACION","ENTRE_CALLES","CIUDAD","ESTADO","CODIGO_POSTAL","CLASE_CLIENTE","CANAL_VENTAS","TIPO_CLIENTE","SITE_USE_CODE","PRIMARY_FLAG","ID_VENDEDOR","NUMERO_VENDEDOR","NOMBRE_VENDEDOR","PUESTO_TBAJO_VENDEDOR"],
+              nrow: 11
+            }, 
+            {
+              rows: { NOMBRE_ORGANIZACION: "TOLUCA" },
+              cols: tcolumns,
+              nrow: 2667
+            }
+          ]; 
+
+          test('Data subsetting', 
+            function(){
+              tsubsets.forEach(
+                function(s, i){
+                  var sload, scols, sn;
+                  sload = df.load(s.rows, s.cols);
+                  sn = "Subset #"+String(i);
+                  scols = Object.keys(sload);
+                  assert.ok(sload, sn+" loaded.");
+                  assert.sameMembers(s.cols, scols, sn+" columns match subset parameters.");
+                  assert.equal(s.nrow*s.cols.length, scols.reduce(
+                    function(c, cl){
+                    return c + sload[cl].length
+                    }, 0),
+                    sn + " value count matches subset parameters."
+                  );
+                  if (!Array.isArray(s.rows)){
+                    var k;
+                    for (k in s.rows){
+                      assert.sameMembers(sl[k], s.rows[k], sn+" "+k+" row values match subset parameters.")
+                    }
+                  }
+                }
+              );
+
+            }
+          );
+        }
+      );
+    </script>
+
+  </body>
+</html>

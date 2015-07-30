@@ -1,0 +1,38 @@
+{
+  "name": "highland",
+  "version": "2.5.1",
+  "homepage": "https://github.com/caolan/highland",
+  "authors": [
+    "Caolan McMahon"
+  ],
+  "description": "The high-level streams library.",
+  "main": "dist/highland.js",
+  "keywords": [
+    "streams",
+    "async",
+    "events",
+    "pipe"
+  ],
+  "license": "Apache 2.0",
+  "ignore": [
+    "**/.*",
+    "Contributing.md",
+    "Gruntfile.js",
+    "bench",
+    "docs",
+    "node_modules",
+    "bower_components",
+    "tasks",
+    "test.js",
+    "test"
+  ],
+  "_release": "2.5.1",
+  "_resolution": {
+    "type": "version",
+    "tag": "2.5.1",
+    "commit": "4f2b477210b603f9969b06c3ba0272fdbfab501f"
+  },
+  "_source": "git://github.com/caolan/highland.git",
+  "_target": "~2.5.1",
+  "_originalSource": "highland"
+}

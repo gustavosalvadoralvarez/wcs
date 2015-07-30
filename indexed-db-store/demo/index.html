@@ -1,0 +1,48 @@
+<!doctype html>
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+    <title>indexed-db Demo</title>
+    <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
+    <link rel="import" href="../indexed-db-store2.html">
+    <link rel="import" href="../indexed-db-view.html">
+  </head>
+  <body>
+
+    <indexed-db-store> 
+      <link rel="import" name="Clientes" class="source" href="../data/Clientes.csv"> 
+      <link rel="import" name="Clientes" class="schema" href="../data/Clientes.json"> 
+      <link rel="import" name="MX" class="source" href="../data/Mexico.processed.csv"> 
+      <link rel="import" name="MX" class="schema" href="../data/Mexico.processed.json"> 
+    </indexed-db-store>
+
+    <indexed-db-view 
+      sql="SELECT * FROM Clientes WHERE CLASE_CLIENTE = 'CUENTA CLUB ROSHFRANS'">
+    </indexed-db-view>
+    <indexed-db-view 
+      sql="SELECT * FROM MX">
+    </indexed-db-view>
+
+    <script>
+      (function(w){
+        w.addEventListener('db-ready', 
+          function(){
+            console.log('Application database ready!');
+          }
+        )
+      })(window);
+    </script>
+    
+
+  </body>
+</html>
