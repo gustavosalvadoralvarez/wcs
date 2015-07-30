@@ -106,34 +106,48 @@ Example:
       map.zoom = self.baseZoom;
       map.addEventListener('google-map-ready', function () {
         console.log('@google-map-ready');
-        var gmap, dbView;
+        var gmap, dbView, viewMarkerImage, viewName;
         self.gmap = map.map;
         self.mapReady = true;
         self.services.directions = new google.maps.DirectionsService();
         gmap = map.map;
         dbView = self.querySelector('sql-view'); 
+        viewName =  (dbView.getAttribute('name') || "view");
+        viewMarkerImage = (dbView.getAttribute('data-markerimage') || null);
         console.log(dbView);
         if (dbView.viewData){
           console.log("Received db data...");
-          self.processViewData(dbView.viewData);
+          self.processViewData(
+            viewName,
+            dbView.viewData,
+            (dbView.getAttribute('data-titlecol') || Object.keys(dbView.viewData[0])[0]),
+            viewMarkerImage
+          );
         }else {
           dbView.addEventListener('db-data', 
             function(evnt){ 
               console.log("Received db data...");
-              self.processViewData(evnt.detail);
+              self.processViewData(
+                viewName,                
+                evnt.detail,
+                (dbView.getAttribute('data-titlecol') || Object.keys(dbView.viewData[0])[0]),
+                viewMarkerImage
+              );
             }
           )
         }
       });
     },
 
-    processViewData: function(name, data, callback){
+    processViewData: function(name, data, titleCol, viewImage, callback){
       console.log("Processing "+name+" data...");
       var self, processed;
       self = this; 
       processed = {
         data: data,
-        geocode: self.viewGeocoding(data)
+        geocode: self.viewGeocoding(data),
+        title: titleCol,
+        viewImage: viewImage
       };
       self.views[name] = processed;
       if (callback){
@@ -171,26 +185,31 @@ Example:
       )
     },
 
-    geocodingMarkers: function(geocoding, titles){ 
-      var self, gmap;
+    showViewMarkers: function(viewName){ 
+      var self, gmap, view, geocoding;
       self = this;
       gmap = self.gmap;
-      titles = titles || utils.range(geocoding.length).map(String);
-      return geocoding.reduce(
-        function(markers, gc, i){ 
+      view = self.views[view]; 
+      geocoding = view.geocoding; 
+
+      titles = view.data.map(utils.getKeyFrom(titleCol)); 
+      geocoding.forEach(
+        function(gc, i){ 
           if (gc){
-            var marker = new google.maps.Maker({
+            var marker, markerSpecs;
+            markerSpecs = {
               position: gc,
               title: titles[i],
               map: gmap
-            });
-            markers = markers.concat(marker);
-          }
-          return markers
+            };
+            if (iconImage){ 
+              markerSpecs.icon = iconImage
+            }
+            marker = new google.maps.Maker(markerSpecs);
           }
         },
         []
-      )
+      );
     },
 
     viewMarkers: function(viewData){
