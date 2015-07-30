@@ -82,7 +82,8 @@ Example:
         type: Object
       },
       views: {
-        type: function() { return {} } ,
+        type: Object,
+        value: function() { return {} } ,
         notify: true
       },
       services: {
@@ -113,11 +114,12 @@ Example:
         gmap = map.map;
         dbView = self.querySelector('sql-view'); 
         viewName =  (dbView.getAttribute('name') || "view");
-        viewMarkerImage = (dbView.getAttribute('data-markerimage') || null);
+        viewMarkerImage = (dbView.getAttribute('data-markericon') || null);
         console.log(dbView);
         if (dbView.viewData){
           console.log("Received db data...");
-          self.processViewData(
+          self.processViewData.call(
+            self,
             viewName,
             dbView.viewData,
             (dbView.getAttribute('data-titlecol') || Object.keys(dbView.viewData[0])[0]),
@@ -127,10 +129,11 @@ Example:
           dbView.addEventListener('db-data', 
             function(evnt){ 
               console.log("Received db data...");
-              self.processViewData(
+              self.processViewData.call(
+                self,
                 viewName,                
                 evnt.detail,
-                (dbView.getAttribute('data-titlecol') || Object.keys(dbView.viewData[0])[0]),
+                (dbView.getAttribute('data-titlecol') || Object.keys(evnt.detail[0])[0]),
                 viewMarkerImage
               );
             }
@@ -143,11 +146,12 @@ Example:
       console.log("Processing "+name+" data...");
       var self, processed;
       self = this; 
+
       processed = {
         data: data,
         geocode: self.viewGeocoding(data),
         title: titleCol,
-        viewImage: viewImage
+        icon: viewImage
       };
       self.views[name] = processed;
       if (callback){
@@ -172,7 +176,7 @@ Example:
         }
       )[0]; 
       return viewData.map(
-        function (r, i){
+        function (row, i){
           var rlat, rlng;
           rlat = row[latKey];
           rlng = row[lngKey];
@@ -189,10 +193,10 @@ Example:
       var self, gmap, view, geocoding;
       self = this;
       gmap = self.gmap;
-      view = self.views[view]; 
-      geocoding = view.geocoding; 
+      view = self.views[viewName]; 
+      geocoding = view.geocode; 
 
-      titles = view.data.map(utils.getKeyFrom(titleCol)); 
+      titles = view.data.map(utils.getKeyFrom(view.titleCol)); 
       geocoding.forEach(
         function(gc, i){ 
           if (gc){
@@ -202,10 +206,10 @@ Example:
               title: titles[i],
               map: gmap
             };
-            if (iconImage){ 
-              markerSpecs.icon = iconImage
+            if (view.icon){ 
+              markerSpecs.icon = view.icon;
             }
-            marker = new google.maps.Maker(markerSpecs);
+            marker = new google.maps.Marker(markerSpecs);
           }
         },
         []
