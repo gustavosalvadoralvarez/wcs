@@ -108,9 +108,12 @@ Example:
       map.addEventListener('google-map-ready', function () {
         console.log('@google-map-ready');
         var gmap, dbView, viewMarkerImage, viewName;
-        self.gmap = map.map;
+        self.gmap = gmap = map.map;
         self.mapReady = true;
-        self.services.directions = new google.maps.DirectionsService();
+        self.services.directions = {};
+        self.services.directions.request = new google.maps.DirectionsService();
+        self.services.directions.render = new google.maps.DirectionsRenderer();
+        self.services.directions.render.setMap(gmap);
         gmap = map.map;
         dbView = self.querySelector('sql-view'); 
         viewName =  (dbView.getAttribute('name') || "view");
@@ -123,7 +126,8 @@ Example:
             viewName,
             dbView.viewData,
             (dbView.getAttribute('data-titlecol') || Object.keys(dbView.viewData[0])[0]),
-            viewMarkerImage
+            viewMarkerImage,
+            self.showViewMarkers.bind(self, viewName)
           );
         }else {
           dbView.addEventListener('db-data', 
@@ -134,7 +138,8 @@ Example:
                 viewName,                
                 evnt.detail,
                 (dbView.getAttribute('data-titlecol') || Object.keys(evnt.detail[0])[0]),
-                viewMarkerImage
+                viewMarkerImage,
+                self.showViewMarkers.bind(self, viewName)
               );
             }
           )
@@ -195,7 +200,6 @@ Example:
       gmap = self.gmap;
       view = self.views[viewName]; 
       geocoding = view.geocode; 
-
       titles = view.data.map(utils.getKeyFrom(view.titleCol)); 
       geocoding.forEach(
         function(gc, i){ 
@@ -257,68 +261,39 @@ Example:
       ); 
     },
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    initPlacesLayer: function(layer){
-      var self, gmap;
-      self = this;
-      gmap = self.gmap;
-      self.activeLayers.places[layer] = self.dataLayers.places[layer].map(
-        function(place){
-          return new google.maps.Marker({
-            position: place.location,
-            map: gmap,
-            title: place.title
-          })
-        }
-      );
-    },
-    activatePlacesLayer: function(layer){
-      var gmap = this.gmap;
-      layer.forEach(function(marker){ marker.setMap(gmap) });
-    },
-    deactivatePlacesLayer: function(layer){
-      layer.forEach(function(marker){ marker.setMap(null) });
-    }, 
-    routeRequest: function(start, end, waypointsArr){
-      return {
-        origin: start,
-        destination: end,
-        travelMode: google.maps.TravelMode.DRIVING,
-        waypoints: waypointsArr, 
-        optimizeWaypoints: true
-      }
-    },
-    getRoute: function(routeRequest){
-      var self;
+    calculateViewRoute: function(viewName){ 
+      var self, view, stopGeocodes, start, stop, wpnts, request, route;
       self = this; 
-      self.directions.route(routeRequest,
-        function (res, status){ 
-          if (status == google.maps.DirectionsStatus.OK) {
-            var route;
-            route = response.routes[0];
+      view = self.views[viewName];
+      stopGeocodes = view.geocode;
+      start = stopGeocodes[0];
+      stop = stopGeocodes[9];
+      wypnts = stopGeocodes.slice(1, 8).map( 
+        function (w){ 
+          return { 
+            location : w,
+            stopover: true
           }
         }
       );
+      request = { 
+        origin: start,
+        destination: stop,
+        waypoints: wypnts,
+        optimizeWaypoints: true, 
+        travelMode: "DRIVING"
+      }
+      console.log("Requesting route:"); 
+      console.log(request);
+      self.services.directions.request.route(request, 
+        function (res, status){ 
+          console.log(res);
+          console.log(status);
+          if (status == google.maps.DirectionsStatus.OK) {
+            self.services.directions.render.setDirections(res);
+          }
+        }
+      )
     }
   });
 
