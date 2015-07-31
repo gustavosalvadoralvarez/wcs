@@ -20,6 +20,7 @@
 		{ "keyPath":"CIUDAD" },
 		{ "keyPath":"ESTADO" },
 		{ "keyPath":"CODIGO_POSTAL" },
+		{ "keyPath":"DEPOSITO" },
 		{ "keyPath":"CLASE_CLIENTE" },
 		{ "keyPath":"CANAL_VENTAS" },
 		{ "keyPath":"TIPO_CLIENTE" },

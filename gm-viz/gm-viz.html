@@ -151,7 +151,6 @@ Example:
       console.log("Processing "+name+" data...");
       var self, processed;
       self = this; 
-
       processed = {
         data: data,
         geocode: self.viewGeocoding(data),
@@ -162,6 +161,7 @@ Example:
       if (callback){
         callback(processed);
       }
+      self.fire('data-acquired', name)
     },
 
     viewGeocoding: function(viewData){ 
@@ -194,26 +194,51 @@ Example:
       )
     },
 
+    infoWindowHTML: function(row, titleCol){ 
+      var dataItems;
+      return Object.keys(row).reduce( 
+        function (html, k, i){ 
+          if (k !== titleCol){ 
+            html = html + [
+            '<tr>',
+              '<th>', k, '</th>',
+              '<td>'+row[k]+'</td>',
+            '</tr>'].join('\n'); 
+          }
+          return html
+        },
+        '<h1>'+String(row[titleCol])+'</h1>\n<table>\n'
+      ) + '</table>'
+    },
+
     showViewMarkers: function(viewName){ 
-      var self, gmap, view, geocoding;
+      var self, gmap, view, data, geocoding;
       self = this;
       gmap = self.gmap;
       view = self.views[viewName]; 
+      data = view.data;
       geocoding = view.geocode; 
-      titles = view.data.map(utils.getKeyFrom(view.titleCol)); 
+      titles = view.data.map(utils.getKeyFrom(view.title)); 
       geocoding.forEach(
         function(gc, i){ 
           if (gc){
-            var marker, markerSpecs;
+            var marker, markerSpecs, inforW;
             markerSpecs = {
               position: gc,
               title: titles[i],
-              map: gmap
+              map: gmap,
+              lable: titles[i]
             };
             if (view.icon){ 
               markerSpecs.icon = view.icon;
             }
             marker = new google.maps.Marker(markerSpecs);
+            infoW = new google.maps.InfoWindow({ content: self.infoWindowHTML(data[i], view.title) });
+            google.maps.event.addListener(marker, 'click', 
+              function() {
+                infoW.open(gmap, marker);
+              }
+            );
           }
         },
         []
@@ -248,7 +273,8 @@ Example:
             pos = new google.maps.LatLng(rlat, rlng);
             rmarker = new google.maps.Marker({
               position: pos, 
-              title: String(i)
+              title: String(i),
+              animation: google.maps.Animation.DROP,
             });
             rmarker.latitude = parseInt(rlat, 10);
             rmarker.longitude = parseInt(rlng, 10); 
