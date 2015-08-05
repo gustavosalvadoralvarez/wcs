@@ -15,9 +15,28 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <title>progressive-form Demo</title>
     <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
     <link rel="import" href="../progressive-form.html">
-    <link rel="import" href="./inputs.json" id="demo-inputs">
+    <link rel="import" href="../../paper-input/paper-input.html">
   </head>
   <body>
-    <progressive-form import="#demo-inputs"></progressive-form>
+    <progressive-form>
+       <paper-input 
+        class='text-input'
+        label="First" 
+        name="first"
+        required="true">
+      </paper-input>
+      <paper-input 
+        class='text-input'
+        label="Last" 
+        name="last"
+        required="true">
+      </paper-input>
+      <paper-input 
+        class='text-input'
+        label="Address" 
+        name="Addr"
+        required="true">
+      </paper-input>
+    </progressive-form>
   </body>
 </html>

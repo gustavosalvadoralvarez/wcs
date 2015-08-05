@@ -40,8 +40,9 @@
         style="display:none;">
       </paper-textarea> 
       <!-- Date Input-->
-      <section class="date-input" 
-               style="display:none;">
+      <section 
+        class="date-input" 
+        style="display:none;">
         <paper-button 
           class="btn" 
           on-tap="toggleDate" 
@@ -65,18 +66,15 @@
         </paper-dialog>
       </section>
       <!-- Select ILnput-->
-      <template is="dom-if" if="{{createSelect}}">
-        <paper-radio-group  
-          class="select-input" 
-          attr-for-selected="name" 
-          selected=""
-          on-iron-select="step">
-          <template is="dom-repeat" items="{{currentInput.options}}">
-              <paper-radio-button 
-                name$="{{item}}">{{item}}</paper-radio-button>
-          </template>
-        </paper-radio-group>
-      </template>
+      <paper-radio-group  
+        class="select-input" 
+        attr-for-selected="name" 
+        on-iron-select="step"
+        style="display:none;">
+        <template is="dom-repeat" items="{{currentInput.options}}">
+            <paper-radio-button name$="{{item}}">{{item}}</paper-radio-button>
+        </template>
+      </paper-radio-group>
     </section>
   </template>
 </dom-module>
@@ -103,12 +101,6 @@
         type: Object,
         notify: true
       },
-
-      createSelect: {
-        type: Boolean,
-        value: false,
-        notify: true
-      }
     },
 
     // Element Lifecycle
@@ -119,47 +111,51 @@
       self.inputs = self.inputs || utils.JSON.import(
         document.querySelector(self.import)
       ); 
-      self.currentInput = self.nextInput(); 
-      self.attachCurrentInputEl();
       console.log(Polymer.dom(self));
+
+      self.currentInput = self.nextInput(); 
+      console.log(self.currentInput);
+      self.attachCurrentInputEl();
+    },
+
+    step: function (){ // Side Effects: detachCurrentInputEl, currentInput, attachCurrentInputEl
+      var self, val, nxtInput;
+      self = this;
+      val = self.currentSelection();
+      if (val){
+        self.selections[self.currentInput.label] = val;
+        nxtInput = self.nextInput();
+        if (nxtInput){
+          self.detachCurrentInputEl(); 
+          self.currentInput = nxtInput;
+          self.attachCurrentInputEl();
+        }
+      }
     },
 
     currentInputEl: function (){
       var self; 
       self = this; 
-      return document.querySelector('.'+ self.currentInput.inputType + '-input')
+      console.log(self.currentInput);
+      return self.$$('.'+ self.currentInput.inputType + '-input')
     },
 
     detachCurrentInputEl: function (){ //Side Effect: setAttribute 
       var self;
       self = this;
       self.currentInputEl().setAttribute('style', 'display:none;'); 
-      self.createSelect = false; 
     },
 
-    attachCurrentInputEl: function (){  //Side Effect: setAttribute []
-      var self, inputEl; 
-      self = this, 
-      inputEl = self.currentInputEl();
-      inputEl.setAttribute('style', 'display:block;');
-      if (self.currentInput.inputType === 'select'){
-          self.createSelect = true; 
-      }
-      //   utils.asArray(inputEl.querySelectorAll("paper-radio-button")).forEach(
-      //     function(el){
-      //       console.log(el);
-      //       el.setAttribute('checked', 'false')
-      //     }
-      //   )
-      // }
+    attachCurrentInputEl: function (){  //Side Effect: setAttribute 
+      var self; 
+      self = this;
+      self.currentInputEl().setAttribute('style', 'display:block;'); 
     },
 
     currentSelection: function (){
       var self, inputEl, selection; 
       self = this;
-      console.log(self.currentInput); 
       inputEl = self.currentInputEl();
-          console.log(inputEl);
       switch(self.currentInput.inputType){
         case "text":
           selection = inputEl.value;
@@ -201,34 +197,6 @@
         }
       } 
       return nxtInput
-    },
-
-    step: function (evnt){ // Side Effects: detachCurrentInputEl, currentInput, attachCurrentInputEl
-      var self, val;
-      self = this;
-      val = self.currentSelection();
-      console.log(evnt);
-      if(evnt){
-        console.log(evnt.target.selected);
-      }
-      if (val){
-        var currLabel, evntObj, nxtInput;
-        currLabel = self.currentInput.label;
-        evntObj = {};
-        evntObj[currLabel] = val;
-        self.selections[currLabel] = val;
-        self.fire("progressive-form-step", evntObj);
-        if (!self.currentInput.next){
-          self.fire('progressive-form-submit', self.selections);
-          return
-        }
-        nxtInput = self.nextInput();
-        if (nxtInput){
-          self.detachCurrentInputEl(); 
-          self.currentInput = nxtInput;
-          self.attachCurrentInputEl();
-        }
-      }
     },
 
   });

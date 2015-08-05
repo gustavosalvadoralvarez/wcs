@@ -1,10 +1,6 @@
 
 <link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="../paper-radio-group/paper-radio-group.html">
-<link rel="import" href="../paper-radio-button/paper-radio-button.html">
-<link rel="import" href="../polymer-paper-datepicker/paper-date-picker.html">
-<link rel="import" href="../paper-input/paper-input.html">
-<link rel="import" href="../paper-input/paper-textarea.html">
+
 
 
 
@@ -18,63 +14,18 @@
     :host {
       display: block;
     }
+    #content > ::content #current {
+      visibility: visible; 
+    }
+    #content > ::content {
+      visibility: hidden;
+    }
   </style>
 
   <template>
-    <section id="progressive-form-body">
-      <!-- Text Input -->
-      <paper-input 
-        class='text-input'
-        label="{{currentInput.label}}" 
-        required="true"
-        on-change="step"
-        style="display:none;">
-      </paper-input> 
-      <!-- Textarea ILnput-->
-      <paper-textarea 
-        class='textarea-input'
-        attr-for-value="value" 
-        label="{{currentInput.label}}" 
-        required="true"
-        on-change="step"
-        style="display:none;">
-      </paper-textarea> 
-      <!-- Date Input-->
-      <section class="date-input" 
-               style="display:none;">
-        <paper-button 
-          class="btn" 
-          on-tap="toggleDate" 
-          raised>Choose Date</paper-button>
-        <paper-dialog 
-          id="dialog" 
-          class="paper-date-picker-dialog" 
-          modal 
-          on-iron-overlay-closed="step">
-          <paper-date-picker 
-            id="date-input-datepicker" 
-            responsive-width="655px">
-          </paper-date-picker>
-          <div 
-            class="buttons">
-            <paper-button 
-              dialog-dismiss>Cancel</paper-button>
-            <paper-button 
-              dialog-confirm>OK</paper-button>
-          </div>
-        </paper-dialog>
-      </section>
-      <!-- Select ILnput-->
-      <paper-radio-group  
-        class="select-input" 
-        attr-for-selected="name" 
-        on-iron-select="step"
-        style="display:none;">
-        <template is="dom-repeat" items="{{currentInput.options}}">
-            <paper-radio-button name$="{{item}}">{{item}}</paper-radio-button>
-        </template>
-      </paper-radio-group>
-    </section>
+    <div id="content">
+      <content></content>
+    </div>
   </template>
 </dom-module>
 
@@ -85,21 +36,20 @@
     is: 'progressive-form',
 
     properties: {
-      import: {
-        type: String
-      },
-      inputs: {
-        type: Object
-      },
       selections: {
-        type: Array,
-        notify: true,
-        value: function () { return {} }
-      },
-      currentInput: {
         type: Object,
-        notify: true
+        readOnly: true,
+        value: function () { 
+          return {}
+        }
       },
+      field: {
+        type: Number,
+        readOnly: true,
+        value: 0,
+        observer: 'step'
+      },
+      
     },
 
     // Element Lifecycle
@@ -107,94 +57,54 @@
     attached: function() {
       var self; 
       self = this; 
-      self.inputs = self.inputs || utils.JSON.import(
-        document.querySelector(self.import)
-      ); 
-      self.currentInput = self.nextInput(); 
-      console.log(self.currentInput);
-      self.attachCurrentInputEl();
-    },
-
-    currentInputEl: function (){
-      var self; 
-      self = this; 
-      console.log(self.currentInput);
-      return self.$$('.'+ self.currentInput.inputType + '-input')
-    },
-
-    detachCurrentInputEl: function (){ //Side Effect: setAttribute 
-      var self;
-      self = this;
-      self.currentInputEl().setAttribute('style', 'display:none;'); 
-    },
-
-    attachCurrentInputEl: function (){  //Side Effect: setAttribute 
-      var self; 
-      self = this;
-      self.currentInputEl().setAttribute('style', 'display:block;'); 
-    },
-
-    currentSelection: function (){
-      var self, inputEl, selection; 
-      self = this;
-      inputEl = self.currentInputEl();
-      switch(self.currentInput.inputType){
-        case "text":
-          selection = inputEl.value;
-        break;
-        case "textarea":
-          selection = inputEl.value;
-        break;
-        case "select":
-          selection = inputEl.selected;
-        break;
-        case "date": 
-          selection = inputEl.date;
-        break; 
-        default: 
-          return new Error("Invalid inputType")
-      }
-      if (!selection || (inputEl.validate && !inputEl.validate())){
-        return new Error("Invalid or missing value: \n"+String(selection))
-      }
-      return selection
-    },
-
-    nextInput: function (){ 
-      var self, nxtInput;
-      self = this; 
-      nxtInput = self.currentInput
-                 ? utils.labeledChild(self.currentInput.next)
-                 : utils.labeledChild(self.inputs); 
-      if (nxtInput.inputType === 'select'){
-        var ops, nxtOpts;
-        ops = nxtInput.options;
-        if(!Array.isArray(ops)) {
-           nxtOps = ops[self.currentSelection()] || ops["*"];
-           if (!nxtOps){
-            throw new Error("No valid options for select input: \n" + JSON.stringify(nxtInput))
-            return
-           }
-           nxtInput.options = nxtOps; 
+      window.addEventListener('WebComponentsReady',
+        function (evnt){ 
+          var fields;
+          fields = utils.Polymer.contained(self); 
+          fields.slice(0, fields.length-1)
+          .forEach(
+              function(fld, i){
+                fld.addEventListener('change', 
+                  function (ievnt){ 
+                    self._setField(i+1);
+                  }
+                )
+            }
+          );
+          self._setField(0);
+          console.log(fields)
         }
-      } 
-      return nxtInput
+      )
     },
 
-    step: function (){ // Side Effects: detachCurrentInputEl, currentInput, attachCurrentInputEl
-      var self, val, nxtInput;
+    addSelection: function(fieldName, selected){ 
+      var self, selections;
       self = this;
-      val = self.currentSelection();
-      if (val){
-        self.selections[self.currentInput.label] = val;
-        nxtInput = self.nextInput();
-        if (nxtInput){
-          self.detachCurrentInputEl(); 
-          self.currentInput = nxtInput;
-          self.attachCurrentInputEl();
-        }
-      }
+      selections = self.selections; 
+      selections[fieldName] = selected; 
+      self._setSelections(selections); 
     },
+
+    step: function (newField, oldField) { 
+      console.log("Form step");
+      console.log(oldField); 
+      console.log(newField);
+      var self, cntnd, curr, prev, selected;
+      self = this;
+      cntnd = utils.Polymer.contained(self); 
+      curr = cntnd[newField];
+      if (newField === 0){ 
+        curr.id = 'current';
+        return
+      }
+      prev = cntnd[oldField]; 
+      selected = prev.value || prev.selected || prev.date;
+      self.addSelection(prev.getAttribute('name'), selected);
+      prev.removeAttribute('id');
+      prev.setAttribute('style', "display:none;");
+      curr.id = 'current';
+    }
+   
 
   });
 
