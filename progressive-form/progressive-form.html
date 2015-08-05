@@ -71,8 +71,21 @@
                 )
             }
           );
+          fields.forEach(
+            function(fld){
+              fld.addEventListener('change',
+                function(evnt){ 
+                  var el, fieldName, selected;
+                  el = evnt.target;
+                  fieldName = el.getAttribute('name'); 
+                  selected = el.value || el.selected || el.date;
+                  self.addSelection(fieldName, selected);
+                }
+              );
+            }
+          );
           self._setField(0);
-          console.log(fields)
+          console.log(fields);
         }
       )
     },
@@ -98,8 +111,8 @@
         return
       }
       prev = cntnd[oldField]; 
-      selected = prev.value || prev.selected || prev.date;
-      self.addSelection(prev.getAttribute('name'), selected);
+      // selected = prev.value || prev.selected || prev.date;
+      // self.addSelection(prev.getAttribute('name'), selected);
       prev.removeAttribute('id');
       prev.setAttribute('style', "display:none;");
       curr.id = 'current';
