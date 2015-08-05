@@ -59,33 +59,31 @@
       self = this; 
       window.addEventListener('WebComponentsReady',
         function (evnt){ 
-          var fields;
+          var fields, lix;
           fields = utils.Polymer.contained(self); 
-          fields.slice(0, fields.length-1)
-          .forEach(
-              function(fld, i){
-                fld.addEventListener('change', 
-                  function (ievnt){ 
-                    self._setField(i+1);
-                  }
-                )
-            }
-          );
+          lix = fields.length -1;
           fields.forEach(
-            function(fld){
+            function(fld, i){
               fld.addEventListener('change',
                 function(evnt){ 
                   var el, fieldName, selected;
                   el = evnt.target;
                   fieldName = el.getAttribute('name'); 
-                  selected = el.value || el.selected || el.date;
+                  selected = el.value || el.date || fieldName;
+                  console.log(el); 
+                  console.log(selected);
                   self.addSelection(fieldName, selected);
+                  self.fire('form-selection', { name: fieldName, selected: selected });
+                  if (i < lix){ 
+                     self._setField(i+1);
+                  } else {
+                    self.fire('form-complete', self.selections);
+                  }
                 }
               );
             }
           );
           self._setField(0);
-          console.log(fields);
         }
       )
     },

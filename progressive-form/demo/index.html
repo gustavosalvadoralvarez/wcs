@@ -16,6 +16,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     <script src="../../webcomponentsjs/webcomponents-lite.js"></script>
     <link rel="import" href="../progressive-form.html">
     <link rel="import" href="../../paper-input/paper-input.html">
+    <link rel="import" href="../../paper-radio-button/paper-radio-button.html">
+    <link rel="import" href="../../paper-radio-group/paper-radio-group.html">
+
   </head>
   <body>
     <progressive-form>
@@ -37,6 +40,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         name="Addr"
         required="true">
       </paper-input>
+      <paper-radio-group name="Size">
+        <paper-radio-button name="small">Small</paper-radio-button>
+        <paper-radio-button name="medium">Medium</paper-radio-button>
+        <paper-radio-button name="large">Large</paper-radio-button>
+      </paper-radio-group>
     </progressive-form>
   </body>
 </html>
