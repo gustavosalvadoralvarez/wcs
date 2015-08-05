@@ -163,7 +163,6 @@ Example:
     provisionViews: function(db){
       console.log("Provisioning views...")
       return function(e){
-        console.log(e);
         var view, viewSql;
         view = e.target
         viewSql = view.getAttribute('sql');
@@ -172,9 +171,7 @@ Example:
         db.executeSql(viewSql).then(
           function(viewData){ 
             console.log("Sql query processed sucessfully!");
-            console.log(viewData);
             view.provision(viewData);
-
           },
           function (e){ 
             console.log('View provisioning error: ');

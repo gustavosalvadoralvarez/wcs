@@ -33,14 +33,14 @@ Example:
 
     :host google-map {
       float:left;
-      width: 70%;
+      width: 100%;
       height: 100%;
   }
 
   </style>
 
   <template>
-    <google-map></google-map>
+    <google-map fitToMarkers="true"></google-map>
     <div class="content">
       <content></content>
     </div>
@@ -106,7 +106,7 @@ Example:
       map.longitude = self.baseLng;
       map.zoom = self.baseZoom;
       map.addEventListener('google-map-ready', function () {
-        console.log('@google-map-ready');
+        console.log('Map initialized...');
         var gmap, dbView, viewMarkerImage, viewName;
         self.gmap = gmap = map.map;
         self.mapReady = true;
@@ -118,7 +118,6 @@ Example:
         dbView = self.querySelector('sql-view'); 
         viewName =  (dbView.getAttribute('name') || "view");
         viewMarkerImage = (dbView.getAttribute('data-markericon') || null);
-        console.log(dbView);
         if (dbView.viewData){
           console.log("Received db data...");
           self.processViewData.call(
@@ -127,7 +126,7 @@ Example:
             dbView.viewData,
             (dbView.getAttribute('data-titlecol') || Object.keys(dbView.viewData[0])[0]),
             viewMarkerImage,
-            self.showViewMarkers.bind(self, viewName)
+            self.renderViewMarkers.bind(self, viewName)
           );
         }else {
           dbView.addEventListener('db-data', 
@@ -139,7 +138,7 @@ Example:
                 evnt.detail,
                 (dbView.getAttribute('data-titlecol') || Object.keys(evnt.detail[0])[0]),
                 viewMarkerImage,
-                self.showViewMarkers.bind(self, viewName)
+                self.renderViewMarkers.bind(self, viewName)
               );
             }
           )
@@ -165,11 +164,10 @@ Example:
     },
 
     viewGeocoding: function(viewData){ 
+      console.log("Generating geocoding...");
       var self, dims, latKey, lngKey;
-      console.log(viewData.length);
       self = this;
       dims = Object.keys(utils.car(viewData)); 
-      console.log(dims);
       latKey = dims.filter(
         function(k){ 
           return /lat/gi.test(k)
@@ -185,9 +183,12 @@ Example:
           var rlat, rlng;
           rlat = row[latKey];
           rlng = row[lngKey];
-
           if (rlat && rlng){
-            return new google.maps.LatLng(rlat, rlng);
+           // return new google.maps.LatLng(rlat, rlng);
+           return { 
+            latitude: rlat,
+            longitude: rlng
+           }
           }
           return null
         }
@@ -211,14 +212,19 @@ Example:
       ) + '</table>'
     },
 
-    showViewMarkers: function(viewName){ 
-      var self, gmap, view, data, geocoding;
+    renderViewMarkers: function(viewName){ 
+      console.log('Rendering '+viewName+' markers...');
+      var self, gmap, mapDom, view, data, icon, geocoding;
       self = this;
       gmap = self.gmap;
       view = self.views[viewName]; 
       data = view.data;
+      icon = view.icon;
       geocoding = view.geocode; 
       titles = view.data.map(utils.getKeyFrom(view.title)); 
+      function addMarker(marker){ 
+        Polymer.dom(self.querySelector('google-map')).appendChild(marker)
+      }
       geocoding.forEach(
         function(gc, i){ 
           if (gc){
@@ -232,13 +238,17 @@ Example:
             if (view.icon){ 
               markerSpecs.icon = view.icon;
             }
-            marker = new google.maps.Marker(markerSpecs);
-            infoW = new google.maps.InfoWindow({ content: self.infoWindowHTML(data[i], view.title) });
-            google.maps.event.addListener(marker, 'click', 
-              function() {
-                infoW.open(gmap, marker);
-              }
-            );
+            marker = document.createElement('google-map-marker');
+            marker.latitude = gc.latitude;
+            marker.longitude = gc.longitude;
+            marker.title = titles[i];
+            marker.mouseEvents = true;
+            marker.clickEvents = true;
+            if (icon){ 
+              marker.icon = icon;
+            }
+            marker.innerHTML = self.infoWindowHTML(data[i], view.title);
+            addMarker(marker);
           }
         },
         []
@@ -248,10 +258,8 @@ Example:
     viewMarkers: function(viewData){
       var self, dims, latKey, lngKey;
       console.log("Generating markers...");
-      console.log(viewData.length);
       self = this;
       dims = Object.keys(utils.car(viewData)); 
-      console.log(dims);
       latKey = dims.filter(
         function(k){ 
           return /lat/gi.test(k)
@@ -269,7 +277,6 @@ Example:
           rlng = row[lngKey];
 
           if (rlat && rlng){
-            console.log("creating marker...");
             pos = new google.maps.LatLng(rlat, rlng);
             rmarker = new google.maps.Marker({
               position: pos, 
@@ -278,13 +285,37 @@ Example:
             });
             rmarker.latitude = parseInt(rlat, 10);
             rmarker.longitude = parseInt(rlng, 10); 
-            //rmarker.setAttribute('data-row', i);
             markers = markers.concat(rmarker);
           }
           return markers
         }, 
         []
       ); 
+    },
+
+    selectWaypoints: function (geoarr, dataarr){
+      var credit, combs, scores;
+      credit = dataarr.map(
+        function (r, i){
+          return parseInt(r.LIMITE_CREDITO, 10); 
+        }
+      );
+      combs = utils.combinations(utils.range(dataarr.length), 8); 
+      scores = combs.map(
+        function(c){
+          return c.reduce(
+            function(s, v){
+              return s + credit[v]
+            },
+            0
+          )
+        }
+      );
+      return combs[scores.indexOf(Math.max.apply(null, score))].map(
+        function (v, i){ 
+          return geoarr[v];
+        }
+      );
     },
 
     calculateViewRoute: function(viewName){ 
@@ -309,12 +340,11 @@ Example:
         optimizeWaypoints: true, 
         travelMode: "DRIVING"
       }
-      console.log("Requesting route:"); 
+      console.log("Requesting route: "); 
       console.log(request);
       self.services.directions.request.route(request, 
         function (res, status){ 
-          console.log(res);
-          console.log(status);
+          console.log("Route request fulfilled with status: "+status);
           if (status == google.maps.DirectionsStatus.OK) {
             self.services.directions.render.setDirections(res);
           }
